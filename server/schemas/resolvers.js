@@ -8,8 +8,8 @@ const resolvers = {
       return User.find();
     },
 
-    user: async (parent, { profileId }) => {
-      return User.findOne({ _id: profileId });
+    user: async (parent, { userId }) => {
+      return User.findOne({ _id: userId });
     },
   },
 
@@ -29,7 +29,7 @@ const resolvers = {
         }
       );
     },
-    deleteUser: async (parent, { profileId }) => {
+    deleteUser: async (parent, { userId }) => {
       return User.findOneAndDelete({ _id: userId });
     },
     deleteBook: async (parent, { userId, book }) => {

@@ -35,7 +35,7 @@ const resolvers = {
     },
 
     saveBook: async (parent, { bookData }, context) => {
-      if (context.User) {
+      if (context.user) {
         return await User.findOneAndUpdate(
           { _id: context.user._id },
           {
@@ -47,14 +47,23 @@ const resolvers = {
           }
         );
       }
+      throw new AuthenticationError("Incorrect credentials");
     },
 
-    removeBook: async (parent, { userId, book }) => {
-      return User.findOneAndUpdate(
-        { _id: userId },
-        { $pull: { books: book } },
-        { new: true }
-      );
+    removeBook: async (parent, { bookId }, context) => {
+      if (context.user) {
+        return await User.findOneAndUpdate(
+          { _id: context.user._id },
+          {
+            $pull: { savedBooks: bookId },
+          },
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
+      }
+      throw new AuthenticationError("Incorrect credentials");
     },
   },
 };

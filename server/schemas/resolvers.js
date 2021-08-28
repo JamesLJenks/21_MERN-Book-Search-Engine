@@ -1,38 +1,55 @@
 const { User } = require('../models');
 const { signToken } = require('../utils/auth');
-
+const { AuthenticationError} = require("apollo-server-express");
 
 const resolvers = {
   Query: {
-    users: async () => {
-      return User.find();
-    },
-
-    user: async (parent, { userId }) => {
-      return User.findOne({ _id: userId });
+    me: async (parent, args, context) => {
+      if (context.user) {
+        return await User.findOne({ _id: context.user._id }).select(
+          "-__v -password"
+        );
+      }
+      throw new AuthenticationError("You need to log in.");
     },
   },
 
   Mutation: {
-    createUser: async (parent, { name }) => {
-      return User.create({ name });
+    login: async (parent, { email, password }) => {
+      const user = await User.findOne({ email });
+      if (!user) {
+        throw new AuthenticationError("Incorrect credentials");
+      }
+      const correctPassword = await user.isCorrectPassword(password);
+      if (!correctPassword) {
+        throw new AuthenticationError("Incorrect credentials");
+      }
+      const token = signToken(user);
+      return { token, user };
     },
-    saveBook: async (parent, { userId, book }) => {
-      return User.findOneAndUpdate(
-        { _id: userId },
-        {
-          $addToSet: { books: book },
-        },
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+
+    addUser: async (parent, args) => {
+      const createdUser = User.create(args);
+      const token = signToken(createdUser);
+      return { createdUser, token };
     },
-    deleteUser: async (parent, { userId }) => {
-      return User.findOneAndDelete({ _id: userId });
+
+    saveBook: async (parent, { bookData }, context) => {
+      if (context.User) {
+        return await User.findOneAndUpdate(
+          { _id: context.user._id },
+          {
+            $push: { savedBooks: bookData },
+          },
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
+      }
     },
-    deleteBook: async (parent, { userId, book }) => {
+
+    removeBook: async (parent, { userId, book }) => {
       return User.findOneAndUpdate(
         { _id: userId },
         { $pull: { books: book } },
